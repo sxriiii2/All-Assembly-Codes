@@ -1,0 +1,254 @@
+Digital Assignment 1
+Name: Surindernath Sivakumar
+Reg no: 21BCE3474
+Question 1: Write a program to transfer a string of data i.e. your name, from code space starting at address 200H to RAM locations starting at 20H and then to RAM locations starting at 50H. Using the simulator, single-step through the program and examine the data transfer and registers.
+Answer:
+Code:
+ORG 0000H
+MOV A, #00H
+MOV DPTR, #0200H
+MOV R1, #0EH
+MOV R0, #20H
+LOOP: CLR A
+MOVC A, @A+DPTR
+MOV @R0, A
+INC DPTR
+INC R0
+DJNZ R1, LOOP
+MOV R0, #40H
+MOV R1, #60H
+MOV R3, #0EH
+LOOP2: CLR A
+MOV A,@R0
+MOV @R1, A
+INC R0
+INC R1
+DJNZ R3, LOOP2
+HERE: SJMP HERE
+ORG 0200H
+DB "CRISTIANORONALDO"
+END
+Output:
+Question 2: 8051 code to find a number is even or odd
+Answer:
+Code:
+ORG 000H
+MOV A,#09H
+MOV B,#02H
+DIV AB
+MOV R0,B
+CJNE R0, #0H, ODD
+MOV A,#00H
+SJMP EVEN
+ODD: MOV A,#01H
+EVEN: NOP
+END
+Output:
+
+
+
+
+Assignment 3
+Name: Surindernath Sivakumar
+Reg No: 21BCE3474
+Question 1: Use Counter 1 in mode 2 and after 10 number of counts on TL1, generate a SQUARE waveform of 1 KHz on P1.2 by using Timer 0 in mode 1, show the counts in TL1 on port 2.
+Answer 1:
+Code:
+ORG 0000H
+MOV TMOD, #01100000B MOV TH1, #0F6H
+SETB TR1
+BACK: SETB P3.5
+MOV A, TL1 MOV P2, A
+CLR P3.5
+JNB TF1, BACK
+CLR TF1 CLR TR1
+MOV TMOD, #00000001B HERE: MOV TL0, #34H
+MOV TH0, #0FFH CPL P1.2
+ACALL DELAY SJMP HERE
+END
+DELAY:
+SETB TR0
+AGAIN: JNB TF0, AGAIN CLR TR0
+CLR TF0 RET
+Output:
+After 10 pulses:
+Question 2: Write a program using timer 1 to generate a 2 KHz square wave frequency on one of the pins of P1.0. Then examine the frequency using the KEIL IDE inbuilt Logic Analyzer.
+Answer 2:
+Code:
+ORG 0000H
+MOV TMOD, #00010000B HERE: MOV TL1, #1AH
+MOV TH1, #0FFH CPL P1.0
+ACALL DELAY SJMPHERE
+END
+DELAY:
+SETB TR1
+AGAIN: JNB TF1, AGAIN CLR TR1
+CLR TF1 RET
+Output Screenshot:
+
+
+
+Microprocessors and Microcontroller Lab 5
+Name: Surindernath Sivakumar
+Reg No: 21BCE3474
+Question 1:
+Develop an Assembly Language Program (ALP) using interrupts to do the following:
+a) Receive data serially and send to P1
+b) Read port 2, transmit data serially, and give a copy to P0
+c) Make timer 0 generate a square wave of 2 KHz frequency on P3.6
+Assume that XTAL = 11.0592 MHz. Set the baud rate at 9600.
+Code:
+ORG 0000H
+LJMP MAIN
+ORG 000BH ;ISR for Timer 0
+CPL P3.6 ;Toggle P3.6
+RETI
+ORG 0023H
+LJMP SERIAL ;Jump to serial ISR
+ORG 30H
+MAIN:
+MOV P1, #0FFH ;Make P1 and input port
+MOV TMOD, #22H ;Timer 0 and 1, mode 2, auto-reload
+MOV TH1, #-3 ;Baud rate of 9600
+MOV SCON, #50H ;8-bit, 1 stop, REN enabled
+MOV TH0, #-92H ;for 2kHz frequency
+MOV IE, #10010010B ;enable serial, timer 0
+SETB TR1 ;start timer 1
+SETB TR0 ;start timer 0
+BACK:
+MOV A, P2 ;read data from port P2
+MOV SBUF, A ;give a copy to SBUF
+MOV P0, A ;send to P0
+SJMP BACK ;Stay indefinitely
+; serial jump
+ORG 100H
+SERIAL:
+JB TI, TRANS ;Jump if TI is high
+MOV A, SBUF ;Otherwise receive data
+MOV P1, A ;Move data to P1
+CLR RI ;Clear RI since CPU doesn't
+RETI ;Return from ISR
+TRANS:
+CLR TI ;Clear TI since CPU doesn't
+RETI ;Return from ISR
+END
+Output Screenshot:
+Question 2:
+Develop an Assembly Language Program (ALP) using interrupts to do the following:
+a) Generate a 10 KHz frequency on P2.1 using T0 8-bit auto reload
+b) Use timer 1 as an event counter to count up 1-Hz pulse and display it on P0. The pulse
+is connected to EX1.
+Assume that XTAL = 11.0592 MHz.
+Code:
+ORG 0000H
+LJMP MAIN
+ORG 000BH
+CPL P2.1 ;toggle P2.1
+RETI
+ORG 0013H
+LJMP TIMER1_ROUTINE
+ORG 0023H
+LJMP SERIAL
+MAIN:
+MOV TMOD, #11H ;Timer 0 mode 1, Timer 1 mode 1
+MOV TH0, #70H ;load TH0 to generate 10 KHz frequency
+MOV IE, #10010010B ;enable serial and Timer 0 interrupt
+SETB TR0 ;start Timer 0
+SETB TR1 ;start Timer 1
+BACK:
+SJMP BACK ;stay indefinitely
+;-----TIMER 1 ISR-------
+TIMER1_ROUTINE:
+INC P0 ;increment P0
+CLR TF1 ;clear Timer 1 flag
+RETI ;return from ISR
+;-----SERIAL ISR-------
+ORG 100H
+SERIAL:
+JB TI, TRANS ;jump if TI is high
+MOV A, SBUF ;otherwise, receive data
+MOV P1, A ;move data to P1
+CLR RI ;clear RI since CPU doesn't
+RETI ;return from ISR
+TRANS:
+CLR TI ;clear TI since CPU doesn't
+RETI ;return from ISR
+END
+Output Screenshot:
+
+
+
+
+LAB ASSESMENT 4
+Surindernath Sivakumar
+21BCE3474
+1. Write a program to send the message “India is our Country” to serial port.
+Assume a SW is connected to pin P1.2. Monitor its status and set the baud rate
+as
+Follows:
+SW = 0, 4800 baud rate
+SW = 1, 9600 baud rate
+Assume XTAL = 11.0592 MHz, 8-bit data, and 1 stop bit. Use Hyper terminal
+for your Results
+CODE:
+ORG 0000H
+MOV A,#0FFH
+MOV P1,A
+XX: MOV DPTR, #MYDATA
+MOV TMOD, #20H
+MOV R0,#-3
+JB P1.2,LABEL
+MOV A,#-6
+MOV R0,A
+LABEL:
+MOV TH1, R0
+MOV SCON, #50H
+SETB TR1
+MOV R1, #21
+AGAIN: CLR A
+MOVC A, @A+DPTR
+MOV SBUF, A
+HERE: JNB TI, HERE
+CLR TI
+INC DPTR
+DJNZ R1, AGAIN
+SJMP XX
+MYDATA: DB 'India is our Country '
+END
+KEIL:
+2. Assume that the 8051 serial port is connected to the COM port of IBM PC,
+P1 and P2 of the 8051 are connected to LEDs and switches, respectively.
+Write an 8051-assembly program to
+(a) send to PC the message “We Are Ready”,
+(b) receive any data send by PC and put it on LEDs connected to P1, and
+(c) get data on switches connected to P2 and send it to PC serially.
+The program should perform part
+(a) once, but parts
+(b) and (c) continuously, use 9600 baud rates.
+CODE:
+ORG 0000H
+MOV DPTR,#MYDATA
+MOV TMOD,#20H
+MOV TH1,#-3
+MOV SCON,#50H
+SETB TR1
+MOV P2,#0FFH
+MOV R1,#14
+AGAIN:CLR A
+MOVC A,@A+DPTR
+MOV SBUF,A
+HERE:JNB TI,HERE
+CLR TI
+INC DPTR
+DJNZ R1,AGAIN
+HERE1:JNB RI,HERE1
+MOV A,SBUF
+MOV P1,A
+CLR RI
+MOV A,P2
+MOV SBUF,A
+HERE2:JNB TI,HERE2
+SJMP HERE1
+MYDATA:DB 'WE ARE READY'
+END
+KEIL SIMULATION:
